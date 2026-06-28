@@ -1,4 +1,4 @@
-import { createUploadUrl } from "@/actions/actions";
+import { createDocumentUploadUrl, uploadToSignedUrl } from "@/lib/api";
 import {
   Camera,
   IdCard,
@@ -11,43 +11,20 @@ import {
 } from "lucide-react";
 
 export async function uploadFileToR2(
+  userId: string,
   file: File,
   documentType: string,
   onProgress?: (progress: number) => void
 ): Promise<{ publicUrl: string; storageKey: string }> {
-  const ext = file.name.split(".").pop() || "bin";
-  const fileKey = `documents/${documentType}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-
-  const { signedUrl, publicUrl } = await createUploadUrl(
-    fileKey,
-    file.type
+  const { signedUrl, publicUrl, storageKey } = await createDocumentUploadUrl(
+    userId,
+    documentType,
+    file
   );
 
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
+  await uploadToSignedUrl(signedUrl, file, onProgress);
 
-    xhr.upload.addEventListener("progress", (e) => {
-      if (e.lengthComputable && onProgress) {
-        onProgress(Math.round((e.loaded / e.total) * 100));
-      }
-    });
-
-    xhr.addEventListener("load", () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve({ publicUrl, storageKey: fileKey });
-      } else {
-        reject(new Error(`Upload failed with status ${xhr.status}`));
-      }
-    });
-
-    xhr.addEventListener("error", () => {
-      reject(new Error("Upload failed"));
-    });
-
-    xhr.open("PUT", signedUrl);
-    xhr.setRequestHeader("Content-Type", file.type);
-    xhr.send(file);
-  });
+  return { publicUrl, storageKey };
 }
 
 export function formatFileSize(bytes: number): string {

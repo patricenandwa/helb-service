@@ -114,9 +114,9 @@ export default function Review({ data, onEdit }: ReviewProps) {
               <span className="text-sm font-medium text-text-primary">
                 {getFileTypeLabel(doc.type)}
               </span>
-              {doc.file && (
+              {(doc.file || doc.fileName) && (
                 <span className="ml-auto text-xs text-text-muted">
-                  {doc.file.name}
+                  {doc.file?.name || doc.fileName}
                 </span>
               )}
             </div>

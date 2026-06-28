@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { createElement } from "react";
 import { motion } from "motion/react";
 import {
   formatFileSize,
@@ -12,6 +13,8 @@ import {
 interface UploadFieldProps {
   documentType: string;
   file: File | null;
+  fileName?: string;
+  fileSize?: number;
   preview: string;
   progress: number;
   uploaded: boolean;
@@ -23,6 +26,8 @@ interface UploadFieldProps {
 export default function UploadField({
   documentType,
   file,
+  fileName,
+  fileSize,
   preview,
   progress,
   uploaded,
@@ -34,7 +39,9 @@ export default function UploadField({
   const [isDragging, setIsDragging] = useState(false);
 
   const label = getFileTypeLabel(documentType);
-  const Icon = getFileTypeIcon(documentType);
+  const icon = getFileTypeIcon(documentType);
+  const displayName = file?.name || fileName || label;
+  const displaySize = file?.size || fileSize || 0;
 
   const handleFiles = useCallback(
     (files: FileList | null) => {
@@ -69,7 +76,7 @@ export default function UploadField({
   );
 
   // File is uploaded and ready
-  if (file && uploaded) {
+  if (uploaded) {
     return (
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
@@ -84,9 +91,13 @@ export default function UploadField({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-text-primary">
-              {file.name}
+              {displayName}
             </p>
-            <p className="text-xs text-text-muted">{formatFileSize(file.size)}</p>
+            {displaySize > 0 && (
+              <p className="text-xs text-text-muted">
+                {formatFileSize(displaySize)}
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -170,7 +181,7 @@ export default function UploadField({
 
         <div className="flex flex-col items-center gap-2">
           <span className="transition-transform group-hover:scale-110">
-            <Icon className="h-8 w-8 text-primary" />
+            {createElement(icon, { className: "h-8 w-8 text-primary" })}
           </span>
           <p className="text-sm font-semibold text-text-primary">{label}</p>
           <p className="text-xs text-text-muted">PNG, JPG, PDF</p>

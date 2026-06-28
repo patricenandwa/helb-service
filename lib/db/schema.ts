@@ -1,8 +1,8 @@
 import { pgTable, uuid, text, boolean, jsonb, timestamp, pgEnum, integer, unique } from "drizzle-orm/pg-core";
 
-const LevelEnum = pgEnum("level", ["Degree", "Tvet", "Kmtc"]);
-const InstitutionTypeEnum = pgEnum("institution_type", ["Public", "Private", "Kmtc"]);
-const FamilyStatusEnum = pgEnum("family_status", ["Both parents alive", "Single parent", "Adopted", "Parent/parents deceased"]);
+export const LevelEnum = pgEnum("level", ["Degree", "Tvet", "Kmtc"]);
+export const InstitutionTypeEnum = pgEnum("institution_type", ["Public", "Private", "Kmtc"]);
+export const FamilyStatusEnum = pgEnum("family_status", ["Both parents alive", "Single parent", "Adopted", "Parent/parents deceased"]);
 export const documentTypeEnum = pgEnum("document_type", [
     "passport_photo",
     "identity_document",
@@ -28,14 +28,15 @@ export const users = pgTable("users", {
     parentGuardianPhoneNumber: text("parent_guardian_phone_number").notNull(),
     kcseIndexNumber: text("kcse_index_number").notNull(),
     kcpeIndexNumber: text("kcpe_index_number").notNull(),
-    level: LevelEnum("level").notNull(),
-    course: text("course").notNull(),
-    institutionType: InstitutionTypeEnum("institution_type").notNull(),
-    institutionName: text("institution_name").notNull(),
-    admissionNumber: text("admission_number").notNull(),
+    level: LevelEnum("level"),
+    course: text("course"),
+    institutionType: InstitutionTypeEnum("institution_type"),
+    institutionName: text("institution_name"),
+    admissionNumber: text("admission_number"),
     hasDisabilities: boolean("has_disabilities").notNull().default(false),
     wasSponsored: boolean("was_sponsored").notNull().default(false),
-    familyStatus: FamilyStatusEnum("family_status").notNull(),
+    familyStatus: FamilyStatusEnum("family_status"),
+    isDraft: boolean("is_draft").notNull().default(true),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

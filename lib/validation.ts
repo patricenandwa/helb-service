@@ -33,9 +33,15 @@ export interface FormData {
 export interface DocumentFile {
   type: string;
   file: File | null;
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
+  storageKey?: string;
+  publicUrl?: string;
   preview: string;
   uploaded: boolean;
   progress: number;
+  error?: string;
 }
 
 export const INITIAL_FORM_DATA: FormData = {
@@ -129,7 +135,7 @@ export function validateStep(step: number, data: FormData): StepErrors {
 
       for (const docType of requiredDocs) {
         const doc = data.documents.find((d) => d.type === docType);
-        if (!doc || !doc.file) {
+        if (!doc || !doc.uploaded) {
           errors[docType] = `This document is required`;
         }
       }

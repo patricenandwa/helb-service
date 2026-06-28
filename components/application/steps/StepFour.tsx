@@ -97,10 +97,12 @@ export default function StepFour({
                   key={doc.type}
                   documentType={doc.type}
                   file={docData.file}
+                  fileName={docData.fileName}
+                  fileSize={docData.fileSize}
                   preview={docData.preview}
                   progress={docData.progress}
                   uploaded={docData.uploaded}
-                  error={errors[doc.type]}
+                  error={errors[doc.type] || docData.error}
                   onFileSelect={onFileSelect}
                   onRemove={onFileRemove}
                 />
@@ -125,10 +127,12 @@ export default function StepFour({
                     key={doc.type}
                     documentType={doc.type}
                     file={docData.file}
+                    fileName={docData.fileName}
+                    fileSize={docData.fileSize}
                     preview={docData.preview}
                     progress={docData.progress}
                     uploaded={docData.uploaded}
-                    error={errors[doc.type]}
+                    error={errors[doc.type] || docData.error}
                     onFileSelect={onFileSelect}
                     onRemove={onFileRemove}
                   />
