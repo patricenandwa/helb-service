@@ -76,10 +76,18 @@ export async function PATCH(req: NextRequest) {
 
         const { userId, ...updates } = parsed.data;
 
+        const shouldSubmit = updates.isDraft === false;
+
         const [user] = await db
             .update(users)
             .set({
                 ...updates,
+                ...(shouldSubmit
+                    ? {
+                        applicationStatus: "submitted" as const,
+                        submittedAt: new Date(),
+                    }
+                    : {}),
                 updatedAt: new Date(),
             })
             .where(eq(users.userId, userId))

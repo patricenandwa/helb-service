@@ -2,7 +2,8 @@ import z from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { getSignedUrlForUpload } from "@/lib/r2/r2";
 import { db } from "@/lib/db";
-import { userDocuments } from "@/lib/db/schema";
+import { userDocuments, users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 const documentTypeSchema = z.enum([
     "passport_photo",
@@ -45,6 +46,16 @@ function getPublicUrl(storageKey: string) {
     return `${publicBaseUrl.replace(/\/$/, "")}/${storageKey}`;
 }
 
+async function userExists(userId: string) {
+    const [user] = await db
+        .select({ userId: users.userId })
+        .from(users)
+        .where(eq(users.userId, userId))
+        .limit(1);
+
+    return Boolean(user);
+}
+
 export async function POST(req: NextRequest) {
     try {
         const data = await req.json();
@@ -58,6 +69,13 @@ export async function POST(req: NextRequest) {
         }
 
         const { documentType, userId, contentType, fileName } = parsed.data;
+        if (!(await userExists(userId))) {
+            return NextResponse.json(
+                { success: false, error: "User not found" },
+                { status: 404 }
+            );
+        }
+
         const storageKey = `applications/${userId}/${documentType}-${Date.now()}-${getSafeFileName(fileName)}`;
 
         // Generate signed URL for upload
@@ -87,6 +105,13 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json(
                 { success: false, error: "Invalid data" },
                 { status: 400 }
+            );
+        }
+
+        if (!(await userExists(parsed.data.userId))) {
+            return NextResponse.json(
+                { success: false, error: "User not found" },
+                { status: 404 }
             );
         }
 

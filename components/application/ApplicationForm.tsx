@@ -22,6 +22,7 @@ import {
 } from "@/lib/validation";
 import {
   createDocumentUploadUrl,
+  isMissingDraftError,
   saveBackgroundInfo,
   saveDocumentMetadata,
   saveEducationInfo,
@@ -85,6 +86,28 @@ export default function ApplicationForm() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
+
+  const recreateDraftUser = useCallback(async (persistThroughStep = 0) => {
+    const savedUserId = await savePersonalInfo(data, null);
+
+    if (persistThroughStep >= 1) {
+      await saveEducationInfo(savedUserId, data);
+    }
+
+    if (persistThroughStep >= 2) {
+      await saveBackgroundInfo(savedUserId, data);
+    }
+
+    setUserId(savedUserId);
+    return savedUserId;
+  }, [data]);
+
+  const clearRestoredDocuments = useCallback(() => {
+    setData((prev) => ({
+      ...prev,
+      documents: [],
+    }));
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -178,7 +201,24 @@ export default function ApplicationForm() {
     });
 
     try {
-      const upload = await createDocumentUploadUrl(userId, type, file);
+      let activeUserId = userId;
+      let upload;
+
+      try {
+        upload = await createDocumentUploadUrl(activeUserId, type, file);
+      } catch (error) {
+        if (!isMissingDraftError(error)) {
+          throw error;
+        }
+
+        activeUserId = await recreateDraftUser(2);
+        setData((prev) => ({
+          ...prev,
+          documents: prev.documents.filter((document) => document.type === type),
+        }));
+        upload = await createDocumentUploadUrl(activeUserId, type, file);
+      }
+
       await uploadToSignedUrl(upload.signedUrl, file, (progress) => {
         setData((prev) => ({
           ...prev,
@@ -197,7 +237,7 @@ export default function ApplicationForm() {
         fileSize: file.size,
       };
 
-      await saveDocumentMetadata(userId, uploadedDocument);
+      await saveDocumentMetadata(activeUserId, uploadedDocument);
 
       setData((prev) => ({
         ...prev,
@@ -227,7 +267,7 @@ export default function ApplicationForm() {
       }));
       setErrors((prev) => ({ ...prev, [type]: message }));
     }
-  }, [userId]);
+  }, [recreateDraftUser, userId]);
 
   const handleFileRemove = useCallback((type: string) => {
     setData((prev) => ({
@@ -252,7 +292,24 @@ export default function ApplicationForm() {
           throw new Error("Application draft was not created.");
         }
 
-        await submitApplication(userId);
+        try {
+          await submitApplication(userId);
+        } catch (error) {
+          if (!isMissingDraftError(error)) {
+            throw error;
+          }
+
+          await recreateDraftUser(2);
+          clearRestoredDocuments();
+          setStep(3);
+          setErrors({
+            submit:
+              "Your saved draft was no longer available. We restored your details, but please upload your documents again.",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
         window.localStorage.removeItem(DRAFT_STORAGE_KEY);
         router.push("/apply/success");
       } catch (err) {
@@ -269,18 +326,47 @@ export default function ApplicationForm() {
     setIsSaving(true);
     try {
       if (step === 0) {
-        const savedUserId = await savePersonalInfo(data, userId);
+        let savedUserId: string;
+
+        try {
+          savedUserId = await savePersonalInfo(data, userId);
+        } catch (error) {
+          if (!userId || !isMissingDraftError(error)) {
+            throw error;
+          }
+
+          savedUserId = await savePersonalInfo(data, null);
+        }
+
         setUserId(savedUserId);
       }
 
       if (step === 1) {
         if (!userId) throw new Error("Application draft was not created.");
-        await saveEducationInfo(userId, data);
+        try {
+          await saveEducationInfo(userId, data);
+        } catch (error) {
+          if (!isMissingDraftError(error)) {
+            throw error;
+          }
+
+          const savedUserId = await recreateDraftUser();
+          await saveEducationInfo(savedUserId, data);
+        }
       }
 
       if (step === 2) {
         if (!userId) throw new Error("Application draft was not created.");
-        await saveBackgroundInfo(userId, data);
+        try {
+          await saveBackgroundInfo(userId, data);
+        } catch (error) {
+          if (!isMissingDraftError(error)) {
+            throw error;
+          }
+
+          const savedUserId = await recreateDraftUser(1);
+          await saveBackgroundInfo(savedUserId, data);
+        }
       }
     } catch (err) {
       console.error("Autosave failed:", err);
@@ -294,7 +380,7 @@ export default function ApplicationForm() {
     }
 
     setStep((prev) => Math.min(prev + 1, TOTAL_STEPS - 1));
-  }, [step, data, router, userId]);
+  }, [clearRestoredDocuments, data, recreateDraftUser, router, step, userId]);
 
   const handleBack = useCallback(() => {
     setErrors({});

@@ -2,11 +2,35 @@ import type { DocumentFile, FormData } from "@/lib/validation";
 
 const API_BASE = "/api/v1";
 
+export class ApiError extends Error {
+  status: number;
+  payload: unknown;
+
+  constructor(message: string, status: number, payload: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.payload = payload;
+  }
+}
+
+export function isMissingDraftError(error: unknown) {
+  return (
+    error instanceof ApiError &&
+    error.status === 404 &&
+    error.message.toLowerCase().includes("user not found")
+  );
+}
+
 async function parseResponse<T>(response: Response, fallbackMessage: string): Promise<T> {
   const payload = await response.json().catch(() => null);
 
   if (!response.ok || payload?.success === false) {
-    throw new Error(payload?.message || payload?.error || fallbackMessage);
+    throw new ApiError(
+      payload?.message || payload?.error || fallbackMessage,
+      response.status,
+      payload
+    );
   }
 
   return payload as T;
