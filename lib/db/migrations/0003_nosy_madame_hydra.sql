@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "application_assignments_one_active_per_user_idx" ON "application_assignments" USING btree ("user_id") WHERE "application_assignments"."status" = 'active';
